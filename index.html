@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d14" />
+  <meta name="description" content="QRNova — a modern QR scanner and QR code generator for SkillCraft Task 04." />
+  <title>QRNova — Scan & Create</title>
+
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+
+  <style>
+    :root{
+      --bg:#080a10; --panel:#11141d; --panel2:#171b27; --line:#262c3b;
+      --text:#f6f7fb; --muted:#9da6b8; --accent:#7c5cff; --accent2:#20d7c7;
+      --danger:#ff5c72; --success:#35d07f; --shadow:0 20px 60px rgba(0,0,0,.34);
+      --radius:24px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0; min-height:100vh; color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(124,92,255,.18), transparent 28%),
+        radial-gradient(circle at 90% 15%, rgba(32,215,199,.10), transparent 25%),
+        var(--bg);
+    }
+    button,input,textarea,select{font:inherit}
+    button{cursor:pointer}
+    .app{max-width:1100px;margin:auto;padding:18px 18px 105px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:46px;height:46px;border-radius:15px;display:grid;place-items:center;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      box-shadow:0 10px 30px rgba(124,92,255,.28)
+    }
+    .logo svg{width:25px;height:25px;fill:none;stroke:white;stroke-width:2.2}
+    .brand h1{font-size:18px;margin:0;letter-spacing:.3px}
+    .brand p{font-size:11px;color:var(--muted);margin:2px 0 0}
+    .icon-btn,.btn{
+      border:1px solid var(--line);background:var(--panel);color:var(--text);
+      border-radius:14px;min-height:44px;padding:0 15px;transition:.2s ease;
+    }
+    .icon-btn{width:44px;padding:0;display:grid;place-items:center}
+    .icon-btn:hover,.btn:hover{transform:translateY(-1px);border-color:#3b4357}
+    .primary{background:linear-gradient(135deg,var(--accent),#5f48dd);border:0}
+    .secondary{background:var(--panel2)}
+    .danger{color:#ff91a0;border-color:rgba(255,92,114,.28)}
+    .hero{
+      border:1px solid var(--line);background:linear-gradient(145deg,rgba(124,92,255,.12),rgba(32,215,199,.05));
+      border-radius:30px;padding:22px;box-shadow:var(--shadow);margin-bottom:16px
+    }
+    .hero h2{margin:0 0 7px;font-size:clamp(25px,5vw,38px);letter-spacing:-1.1px}
+    .hero p{margin:0;color:var(--muted);max-width:650px;line-height:1.55}
+    .tabs{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:6px;
+      background:rgba(17,20,29,.86);border:1px solid var(--line);border-radius:18px;margin:16px 0
+    }
+    .tab{border:0;background:transparent;color:var(--muted);padding:12px 8px;border-radius:13px;font-weight:700}
+    .tab.active{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px #303749}
+    .view{display:none}.view.active{display:block}
+    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+    .card{
+      border:1px solid var(--line);background:rgba(17,20,29,.92);border-radius:var(--radius);
+      padding:18px;box-shadow:var(--shadow)
+    }
+    .card h3{margin:0 0 5px;font-size:17px}.sub{color:var(--muted);font-size:13px;line-height:1.5}
+    .scanner-shell{position:relative;overflow:hidden;border-radius:22px;background:#05070b;min-height:360px;margin:14px 0}
+    #reader{width:100%;min-height:360px}
+    #reader video{width:100%!important;height:auto!important;min-height:360px;object-fit:cover}
+    #reader__scan_region{background:#05070b}
+    #reader__dashboard{padding:10px!important}
+    #reader__dashboard_section_csr button,#reader__dashboard_section_swaplink{
+      color:#fff!important;background:#1c2230!important;border:1px solid #343b4d!important;border-radius:10px!important;padding:8px 10px!important
+    }
+    .scan-frame{
+      position:absolute;inset:50% auto auto 50%;width:min(72vw,280px);height:min(72vw,280px);
+      transform:translate(-50%,-50%);pointer-events:none;border-radius:28px;
+      border:2px solid rgba(255,255,255,.7);box-shadow:0 0 0 9999px rgba(0,0,0,.16)
+    }
+    .scan-frame:after{content:"";position:absolute;left:8%;right:8%;height:2px;top:20%;
+      background:linear-gradient(90deg,transparent,var(--accent2),transparent);animation:scan 2.1s ease-in-out infinite}
+    @keyframes scan{0%,100%{top:18%;opacity:.2}50%{top:80%;opacity:1}}
+    .scan-status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:8px 0 14px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--accent2);box-shadow:0 0 14px var(--accent2)}
+    .actions{display:flex;flex-wrap:wrap;gap:9px}
+    .result{
+      display:none;margin-top:15px;border:1px solid rgba(53,208,127,.25);background:rgba(53,208,127,.06);
+      border-radius:18px;padding:15px
+    }
+    .result.show{display:block}
+    .result-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .result-type{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--success);font-weight:800}
+    .result-value{margin:9px 0;word-break:break-word;line-height:1.5;color:#e9f8ef}
+    .field{margin:12px 0}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px}
+    input,textarea,select{
+      width:100%;background:#0c0f17;color:var(--text);border:1px solid var(--line);
+      border-radius:13px;padding:12px 13px;outline:none
+    }
+    input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,.12)}
+    textarea{min-height:105px;resize:vertical}
+    .type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+    .type-btn{border:1px solid var(--line);background:#0d1018;color:var(--muted);border-radius:13px;padding:10px 7px;font-size:12px}
+    .type-btn.active{color:#fff;border-color:var(--accent);background:rgba(124,92,255,.14)}
+    .qr-stage{
+      min-height:340px;border:1px dashed #343b4d;border-radius:20px;display:grid;place-items:center;
+      background:radial-gradient(circle,rgba(124,92,255,.10),transparent 55%)
+    }
+    #qrcode{background:white;padding:18px;border-radius:16px;display:none}
+    #qrcode img,#qrcode canvas{display:block!important;max-width:100%}
+    .empty{text-align:center;color:var(--muted);padding:25px}
+    .history-tools{display:flex;gap:9px;margin:14px 0}.history-tools input{flex:1}
+    .history-list{display:grid;gap:9px}
+    .history-item{display:flex;gap:12px;align-items:center;padding:13px;border:1px solid var(--line);border-radius:16px;background:#0d1018}
+    .history-icon{width:38px;height:38px;border-radius:12px;background:rgba(124,92,255,.13);display:grid;place-items:center;color:#b9adff;font-weight:900}
+    .history-main{min-width:0;flex:1}.history-main strong{display:block;font-size:13px;margin-bottom:3px}
+    .history-main span{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .history-item .mini{min-width:36px;padding:0;height:36px}
+    .bottom-nav{
+      position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:50;
+      width:min(520px,calc(100% - 28px));display:grid;grid-template-columns:repeat(3,1fr);
+      gap:6px;padding:7px;border:1px solid #303749;background:rgba(12,15,23,.92);backdrop-filter:blur(18px);
+      border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.5)
+    }
+    .nav-btn{border:0;background:transparent;color:var(--muted);padding:9px 6px;border-radius:15px;font-size:11px;font-weight:700}
+    .nav-btn.active{background:#1a1f2b;color:#fff}
+    .toast{
+      position:fixed;left:50%;bottom:95px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+      background:#f6f7fb;color:#080a10;padding:11px 15px;border-radius:13px;font-size:12px;font-weight:800;
+      transition:.25s;z-index:100;max-width:calc(100% - 35px);text-align:center
+    }
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+    .hint{margin-top:11px;font-size:11px;color:var(--muted)}
+    .hidden{display:none!important}
+    @media(max-width:780px){.grid{grid-template-columns:1fr}.hero{padding:19px}.scanner-shell,#reader,#reader video{min-height:330px}}
+    @media(max-width:430px){.app{padding-left:12px;padding-right:12px}.type-grid{grid-template-columns:repeat(2,1fr)}.card{padding:14px}.scanner-shell,#reader,#reader video{min-height:300px}}
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-label="QRNova logo">
+          <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v6h-2zM14 18h2v2h-2z"/></svg>
+        </div>
+        <div><h1>QRNova</h1><p>SkillCraft • Task 04</p></div>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">☾</button>
+    </header>
+
+    <section class="hero">
+      <h2>Scan it. Create it. Keep it.</h2>
+      <p>A fast, polished QR utility with camera scanning, image scanning, QR generation, copy/share actions and local scan history.</p>
+    </section>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-view="scan">⌗ Scan</button>
+      <button class="tab" data-view="create">＋ Create</button>
+      <button class="tab" data-view="history">◷ History</button>
+    </div>
+
+    <section id="scan" class="view active">
+      <div class="grid">
+        <div class="card">
+          <h3>QR Scanner</h3>
+          <div class="sub">Use your device camera or scan a QR code from an image.</div>
+
+          <div class="scanner-shell">
+            <div id="reader"></div>
+            <div class="scan-frame" aria-hidden="true"></div>
+          </div>
+
+          <div class="scan-status"><span class="dot"></span><span id="scannerStatus">Ready — choose camera to start.</span></div>
+
+          <div class="actions">
+            <button class="btn primary" id="startBtn">Start Camera</button>
+            <button class="btn secondary" id="stopBtn">Stop</button>
+            <button class="btn secondary" id="switchBtn">Switch Camera</button>
+            <label class="btn secondary" for="imageInput">Scan Image</label>
+            <input class="hidden" id="imageInput" type="file" accept="image/*" />
+          </div>
+          <p class="hint">Camera access works on secure HTTPS pages such as GitHub Pages.</p>
+        </div>
+
+        <aside class="card">
+          <h3>Latest result</h3>
+          <div class="sub">Your scanned value appears here automatically.</div>
+          <div id="resultBox" class="result">
+            <div class="result-head"><span class="result-type" id="resultType">QR CODE</span><button class="icon-btn mini" id="copyBtn" title="Copy">⧉</button></div>
+            <div class="result-value" id="resultValue"></div>
+            <div class="actions">
+              <button class="btn primary hidden" id="openBtn">Open Link</button>
+              <button class="btn secondary" id="shareBtn">Share</button>
+              <button class="btn secondary" id="saveResultBtn">Save to History</button>
+            </div>
+          </div>
+          <div id="noResult" class="empty">No scan yet.<br/>Point the camera at a QR code.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="create" class="view">
+      <div class="grid">
+        <div class="card">
+          <h3>Create a new QR code</h3>
+          <div class="sub">Choose a format, enter your details and generate instantly.</div>
+
+          <div class="type-grid">
+            <button class="type-btn active" data-type="text">Text</button>
+            <button class="type-btn" data-type="url">Website</button>
+            <button class="type-btn" data-type="wifi">Wi‑Fi</button>
+            <button class="type-btn" data-type="email">Email</button>
+            <button class="type-btn" data-type="phone">Phone</button>
+            <button class="type-btn" data-type="sms">SMS</button>
+          </div>
+
+          <div id="dynamicFields"></div>
+          <button class="btn primary" id="generateBtn" style="width:100%;margin-top:5px">Generate QR Code</button>
+        </div>
+
+        <div class="card">
+          <h3>Your QR code</h3>
+          <div class="qr-stage"><div id="qrcode"></div><div id="qrEmpty" class="empty">Your QR code will appear here.</div></div>
+          <div class="actions" style="margin-top:12px">
+            <button class="btn secondary" id="downloadBtn" disabled>Download PNG</button>
+            <button class="btn secondary" id="copyGeneratedBtn" disabled>Copy Content</button>
+            <button class="btn secondary" id="shareGeneratedBtn" disabled>Share</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="history" class="view">
+      <div class="card">
+        <h3>Scan history</h3>
+        <div class="sub">Stored only in this browser using local storage.</div>
+        <div class="history-tools">
+          <input id="historySearch" placeholder="Search history…" />
+          <button class="btn danger" id="clearHistory">Clear</button>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <button class="nav-btn active" data-view="scan">⌗<br/>Scan</button>
+    <button class="nav-btn" data-view="create">＋<br/>Create</button>
+    <button class="nav-btn" data-view="history">◷<br/>History</button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let scanner = null;
+    let cameras = [];
+    let cameraIndex = 0;
+    let scanning = false;
+    let selectedType = "text";
+    let lastResult = "";
+    let generatedContent = "";
+
+    const $ = (id) => document.getElementById(id);
+
+    function toast(message){
+      const t = $("toast");
+      t.textContent = message;
+      t.classList.add("show");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(()=>t.classList.remove("show"), 2200);
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    }
+
+    function showView(view){
+      document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === view));
+      document.querySelectorAll(".tab,.nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+      if(view !== "scan" && scanning) stopScanner();
+    }
+    document.querySelectorAll("[data-view]").forEach(btn => btn.addEventListener("click",()=>showView(btn.dataset.view)));
+
+    function setScannerStatus(text){ $("scannerStatus").textContent = text; }
+
+    async function loadCameras(){
+      try{
+        cameras = await Html5Qrcode.getCameras();
+        if(!cameras.length) throw new Error("No camera found");
+        return cameras;
+      }catch(err){
+        setScannerStatus("Camera permission is needed to scan.");
+        toast("Could not access a camera.");
+        return [];
+      }
+    }
+
+    async function startScanner(){
+      if(scanning) return;
+      if(typeof Html5Qrcode === "undefined"){
+        toast("Scanner library is still loading. Try again.");
+        return;
+      }
+      const list = cameras.length ? cameras : await loadCameras();
+      if(!list.length) return;
+
+      scanner = new Html5Qrcode("reader");
+      const cam = list[cameraIndex % list.length];
+      try{
+        await scanner.start(
+          cam.id,
+          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+          onScanSuccess,
+          () => {}
+        );
+        scanning = true;
+        setScannerStatus("Scanning — point the camera at a QR code.");
+        toast("Camera started");
+      }catch(err){
+        scanner = null;
+        setScannerStatus("Could not start camera. Check browser permission.");
+        toast("Camera could not start.");
+      }
+    }
+
+    async function stopScanner(){
+      if(!scanner || !scanning) return;
+      try{ await scanner.stop(); }catch(e){}
+      try{ scanner.clear(); }catch(e){}
+      scanner = null; scanning = false;
+      setScannerStatus("Stopped — tap Start Camera when ready.");
+    }
+
+    async function switchCamera(){
+      if(!cameras.length) await loadCameras();
+      if(cameras.length < 2){ toast("Only one camera detected."); return; }
+      const wasScanning = scanning;
+      await stopScanner();
+      cameraIndex = (cameraIndex + 1) % cameras.length;
+      if(wasScanning) startScanner();
+      else toast("Camera switched");
+    }
+
+    function onScanSuccess(decodedText){
+      if(decodedText === lastResult && Date.now() - (window.__lastScanAt || 0) < 2500) return;
+      lastResult = decodedText; window.__lastScanAt = Date.now();
+      displayResult(decodedText);
+      addHistory(decodedText);
+      toast("QR code detected");
+    }
+
+    function displayResult(value){
+      $("noResult").classList.add("hidden");
+      $("resultBox").classList.add("show");
+      $("resultValue").textContent = value;
+      const isUrl = /^https?:\\/\\//i.test(value);
+      $("resultType").textContent = isUrl ? "WEBSITE LINK" : "QR CODE";
+      $("openBtn").classList.toggle("hidden", !isUrl);
+      $("openBtn").onclick = () => window.open(value, "_blank", "noopener,noreferrer");
+    }
+
+    $("startBtn").onclick = startScanner;
+    $("stopBtn").onclick = stopScanner;
+    $("switchBtn").onclick = switchCamera;
+
+    $("copyBtn").onclick = async () => {
+      if(!lastResult) return;
+      await navigator.clipboard.writeText(lastResult);
+      toast("Copied to clipboard");
+    };
+
+    $("shareBtn").onclick = async () => {
+      if(!lastResult) return;
+      if(navigator.share){ try{ await navigator.share({title:"QRNova Scan",text:lastResult}); }catch(e){} }
+      else { await navigator.clipboard.writeText(lastResult); toast("Sharing unavailable — copied instead"); }
+    };
+
+    $("saveResultBtn").onclick = () => {
+      if(lastResult){ addHistory(lastResult); toast("Saved to history"); }
+    };
+
+    $("imageInput").addEventListener("change", async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      if(typeof Html5Qrcode === "undefined"){ toast("Scanner library is still loading."); return; }
+      try{
+        const temp = new Html5Qrcode("reader");
+        const text = await temp.scanFile(file, true);
+        displayResult(text); addHistory(text); toast("Image scanned");
+        try{ temp.clear(); }catch(err){}
+      }catch(err){
+        toast("No QR code found in that image.");
+      }
+      e.target.value = "";
+    });
+
+    const fieldTemplates = {
+      text: () => `
+        <div class="field"><label>Text</label><textarea id="f_text" placeholder="Type any text…">Hello from QRNova!</textarea></div>`,
+      url: () => `
+        <div class="field"><label>Website URL</label><input id="f_url" type="url" placeholder="https://example.com" value="https://github.com/"/></div>`,
+      wifi: () => `
+        <div class="field"><label>Wi‑Fi network name (SSID)</label><input id="f_ssid" placeholder="My WiFi"/></div>
+        <div class="field"><label>Password</label><input id="f_pass" type="password" placeholder="Password"/></div>
+        <div class="field"><label>Security</label><select id="f_sec"><option value="WPA">WPA/WPA2</option><option value="WEP">WEP</option><option value="nopass">No password</option></select></div>`,
+      email: () => `
+        <div class="field"><label>Email address</label><input id="f_email" type="email" placeholder="name@example.com"/></div>
+        <div class="field"><label>Subject</label><input id="f_subject" placeholder="Subject"/></div>
+        <div class="field"><label>Message</label><textarea id="f_message" placeholder="Your message…"></textarea></div>`,
+      phone: () => `
+        <div class="field"><label>Phone number</label><input id="f_phone" type="tel" placeholder="+91 9876543210"/></div>`,
+      sms: () => `
+        <div class="field"><label>Phone number</label><input id="f_smsphone" type="tel" placeholder="+91 9876543210"/></div>
+        <div class="field"><label>Message</label><textarea id="f_smsmsg" placeholder="Your SMS message…"></textarea></div>`
+    };
+
+    function renderFields(){
+      $("dynamicFields").innerHTML = fieldTemplates[selectedType]();
+    }
+    document.querySelectorAll(".type-btn").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        document.querySelectorAll(".type-btn").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedType = btn.dataset.type;
+        renderFields();
+      });
+    });
+    renderFields();
+
+    function getGeneratedContent(){
+      const v = id => ($(id)?.value || "").trim();
+      if(selectedType === "text") return v("f_text");
+      if(selectedType === "url"){
+        let url = v("f_url");
+        if(url && !/^https?:\\/\\//i.test(url)) url = "https://" + url;
+        return url;
+      }
+      if(selectedType === "wifi"){
+        const ssid=v("f_ssid"), pass=v("f_pass"), sec=v("f_sec");
+        return `WIFI:T:${sec};S:${ssid};P:${pass};;`;
+      }
+      if(selectedType === "email"){
+        return `mailto:${v("f_email")}?subject=${encodeURIComponent(v("f_subject"))}&body=${encodeURIComponent(v("f_message"))}`;
+      }
+      if(selectedType === "phone") return `tel:${v("f_phone")}`;
+      if(selectedType === "sms") return `SMSTO:${v("f_smsphone")}:${v("f_smsmsg")}`;
+      return "";
+    }
+
+    $("generateBtn").onclick = () => {
+      const content = getGeneratedContent();
+      if(!content){ toast("Please enter some content first."); return; }
+      generatedContent = content;
+      const box = $("qrcode");
+      box.innerHTML = "";
+      new QRCode(box,{text:content,width:260,height:260,colorDark:"#0a0c12",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});
+      box.style.display="block"; $("qrEmpty").classList.add("hidden");
+      $("downloadBtn").disabled=false; $("copyGeneratedBtn").disabled=false; $("shareGeneratedBtn").disabled=false;
+      addHistory(content);
+      toast("QR code generated");
+    };
+
+    $("downloadBtn").onclick = () => {
+      const canvas = $("qrcode").querySelector("canvas");
+      const img = $("qrcode").querySelector("img");
+      const data = canvas ? canvas.toDataURL("image/png") : img?.src;
+      if(!data) return;
+      const a=document.createElement("a"); a.href=data; a.download="qrnova-code.png"; a.click();
+      toast("QR image downloaded");
+    };
+    $("copyGeneratedBtn").onclick = async () => {
+      if(!generatedContent) return;
+      await navigator.clipboard.writeText(generatedContent); toast("Content copied");
+    };
+    $("shareGeneratedBtn").onclick = async () => {
+      if(!generatedContent) return;
+      if(navigator.share){ try{ await navigator.share({title:"QRNova QR Code",text:generatedContent}); }catch(e){} }
+      else { await navigator.clipboard.writeText(generatedContent); toast("Sharing unavailable — copied instead"); }
+    };
+
+    function readHistory(){
+      try{return JSON.parse(localStorage.getItem("qrnova-history") || "[]")}catch(e){return []}
+    }
+    function writeHistory(items){localStorage.setItem("qrnova-history",JSON.stringify(items.slice(0,80)))}
+    function addHistory(value){
+      if(!value) return;
+      let items=readHistory().filter(x=>x.value!==value);
+      items.unshift({value, time:new Date().toISOString()});
+      writeHistory(items); renderHistory();
+    }
+    function renderHistory(){
+      const q=($("historySearch").value||"").toLowerCase();
+      const items=readHistory().filter(x=>x.value.toLowerCase().includes(q));
+      const list=$("historyList");
+      if(!items.length){list.innerHTML='<div class="empty">No matching history yet.</div>';return}
+      list.innerHTML=items.map((item,i)=>`
+        <div class="history-item">
+          <div class="history-icon">⌗</div>
+          <div class="history-main"><strong>${escapeHtml(item.value.slice(0,50))}</strong><span>${escapeHtml(item.value)} • ${new Date(item.time).toLocaleString()}</span></div>
+          <button class="icon-btn mini" data-copy="${i}" title="Copy">⧉</button>
+          <button class="icon-btn mini danger" data-delete="${i}" title="Delete">×</button>
+        </div>`).join("");
+
+      list.querySelectorAll("[data-copy]").forEach(btn=>btn.onclick=async()=>{
+        const item=items[Number(btn.dataset.copy)]; await navigator.clipboard.writeText(item.value); toast("Copied");
+      });
+      list.querySelectorAll("[data-delete]").forEach(btn=>btn.onclick=()=>{
+        const target=items[Number(btn.dataset.delete)];
+        writeHistory(readHistory().filter(x=>x.time!==target.time)); renderHistory(); toast("Removed");
+      });
+    }
+    $("historySearch").addEventListener("input",renderHistory);
+    $("clearHistory").onclick=()=>{
+      if(confirm("Clear all saved scan history?")){localStorage.removeItem("qrnova-history");renderHistory();toast("History cleared")}
+    };
+    renderHistory();
+
+    $("themeBtn").onclick=()=>{
+      const light=document.body.dataset.theme==="light";
+      if(!light){
+        document.body.dataset.theme="light";
+        document.documentElement.style.setProperty("--bg","#f4f6fb");
+        document.documentElement.style.setProperty("--panel","#ffffff");
+        document.documentElement.style.setProperty("--panel2","#f0f2f8");
+        document.documentElement.style.setProperty("--line","#dce1eb");
+        document.documentElement.style.setProperty("--text","#10131b");
+        document.documentElement.style.setProperty("--muted","#626b7d");
+        $("themeBtn").textContent="☀";
+      }else{
+        document.body.dataset.theme="";
+        document.documentElement.style.setProperty("--bg","#080a10");
+        document.documentElement.style.setProperty("--panel","#11141d");
+        document.documentElement.style.setProperty("--panel2","#171b27");
+        document.documentElement.style.setProperty("--line","#262c3b");
+        document.documentElement.style.setProperty("--text","#f6f7fb");
+        document.documentElement.style.setProperty("--muted","#9da6b8");
+        $("themeBtn").textContent="☾";
+      }
+    };
+  </script>
+</body>
+</html>
